@@ -10,6 +10,7 @@ import (
 	auth "ChatGo/server/midleware"
 	"context"
 	"encoding/json"
+	"errors"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,8 +34,8 @@ type message struct {
 }
 
 type answer struct {
-	Error string `json:"error"`
-	Data  string `json:"data"`
+	Error string      `json:"error"`
+	Data  interface{} `json:"data"`
 }
 
 func Run() error {
@@ -60,28 +61,39 @@ func Run() error {
 	return nil
 }
 
+func requestHandling(w http.ResponseWriter, result interface{}, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	switch result.(type) {
+	case error:
+		errjson, _ := json.Marshal(&answer{
+			Error: result.(error).Error(),
+			Data:  ""})
+		http.Error(w, string(errjson), code)
+	default:
+		w.WriteHeader(code)
+		json.NewEncoder(w).Encode(&answer{
+			Error: "",
+			Data:  result})
+	}
+}
+
 func PageNotFound(w http.ResponseWriter, req *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("404 Page Not Found"))
+	requestHandling(w, errors.New("404 Page Not Found"), http.StatusNotFound)
 }
 
 func Create(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
-
 	var NewUser user
 	err := json.NewDecoder(req.Body).Decode(&NewUser)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -93,33 +105,27 @@ func Create(w http.ResponseWriter, req *http.Request) {
 		Pass:  NewUser.Pass,
 	})
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&answer{})
+	requestHandling(w, "Ok", http.StatusOK)
 
 }
 
 func Login(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
-
 	var NewUser user
 	err := json.NewDecoder(req.Body).Decode(&NewUser)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -131,30 +137,26 @@ func Login(w http.ResponseWriter, req *http.Request) {
 		Pass:  NewUser.Pass,
 	})
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{})
+		requestHandling(w, nil, http.StatusBadRequest)
 		return
 	}
 
-	json.NewEncoder(w).Encode(&answer{Data: token})
+	requestHandling(w, token, http.StatusOK)
 
 }
 
 func FindUser(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
-
 	parUserUrl := req.URL.Query()["User"]
 	if len(parUserUrl) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
+		requestHandling(w, errors.New("User parametrs is missing"), http.StatusBadRequest)
 		return
 	}
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -163,33 +165,27 @@ func FindUser(w http.ResponseWriter, req *http.Request) {
 	con := controller.NewUserUseCase(useCase)
 	results, err := con.Find(req.Context(), parUserUrl[0])
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&results)
+	requestHandling(w, results, http.StatusOK)
 
 }
 
 func AddContact(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
-
 	var NewUser contact
 	err := json.NewDecoder(req.Body).Decode(&NewUser)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -198,33 +194,27 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 	con := controller.NewUserUseCase(useCase)
 	err = con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&answer{})
+	requestHandling(w, "Ok", http.StatusOK)
 
 }
 
 func CreateMessage(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
-
 	var NewMes message
 	err := json.NewDecoder(req.Body).Decode(&NewMes)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -233,25 +223,20 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 	con := controller.NewMessageUseCase(useCase)
 	err = con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&answer{})
+	requestHandling(w, "Ok", http.StatusOK)
 
 }
 
 func ListMessages(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
-
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -260,8 +245,7 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 	if len(parOffsetUrl) != 0 {
 		offset, err = time.Parse(time.RFC3339, parOffsetUrl[0])
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+			requestHandling(w, err, http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -270,7 +254,7 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 
 	parRecipientUrl := req.URL.Query()["Recipient"]
 	if len(parRecipientUrl) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
+		requestHandling(w, errors.New("Recipient parametrs is missing"), http.StatusBadRequest)
 		return
 	}
 
@@ -279,12 +263,10 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 	con := controller.NewMessageUseCase(useCase)
 	results, err := con.ListMessages(req.Context(), parRecipientUrl[0], offset)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(&answer{Error: err.Error()})
+		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(&results)
+	requestHandling(w, results, http.StatusOK)
 
 }
