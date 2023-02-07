@@ -1,6 +1,7 @@
 package config
 
 import (
+	"ChatGo/pkg/logging"
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -24,6 +25,8 @@ var (
 
 func Get() *Config {
 	once.Do(func() {
+		logger := logging.GetLogger()
+		logger.Info("Get config")
 		yamlFile, err := ioutil.ReadFile("./config/app.yaml")
 		if err != nil {
 			panic(err)
@@ -33,6 +36,7 @@ func Get() *Config {
 			panic(err)
 		}
 		config.URI = fmt.Sprintf("mongodb://%s:%s@%s:%s/?maxPoolSize=20&w=majority", config.User, config.Pass, config.Host, config.Port)
+		logger.Debugf("config %v", config)
 	})
 	return &config
 }

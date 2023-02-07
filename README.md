@@ -6,8 +6,10 @@ Authorization: jwt
 
 Validation: https://github.com/go-ozzo/ozzo-validation
 
-HTTP ftamework: https://github.com/gorilla/mux
+HTTP framework: https://github.com/gorilla/mux
 
-DB: mongodb
+DB: mongodb (go.mongodb.org/mongo-driver/mongo)
+
+Log: https://github.com/sirupsen/logrus
 
 Clean architecture

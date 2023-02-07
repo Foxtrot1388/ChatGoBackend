@@ -4,9 +4,10 @@ import (
 	"ChatGo/config"
 	storage "ChatGo/internal/adapters/db/mongodb"
 	controller "ChatGo/internal/controller/http/v1"
-	entity "ChatGo/internal/domain/entity"
+	"ChatGo/internal/domain/entity"
 	message_usecase "ChatGo/internal/usecase/message"
 	user_usecase "ChatGo/internal/usecase/user"
+	"ChatGo/pkg/logging"
 	auth "ChatGo/server/midleware"
 	"context"
 	"encoding/json"
@@ -40,6 +41,9 @@ type answer struct {
 
 func Run() error {
 
+	logger := logging.GetLogger()
+
+	logger.Info("Start app")
 	validation.ErrorTag = "vall"
 
 	r := mux.NewRouter()
@@ -62,6 +66,7 @@ func Run() error {
 }
 
 func requestHandling(w http.ResponseWriter, result interface{}, code int) {
+	logger := logging.GetLogger()
 	w.Header().Set("Content-Type", "application/json")
 	switch result.(type) {
 	case error:
@@ -69,19 +74,27 @@ func requestHandling(w http.ResponseWriter, result interface{}, code int) {
 			Error: result.(error).Error(),
 			Data:  ""})
 		http.Error(w, string(errjson), code)
+		logger.Errorf("code %d result %s", code, result.(error).Error())
 	default:
 		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(&answer{
+		resultjson, _ := json.Marshal(&answer{
 			Error: "",
 			Data:  result})
+		w.Write(resultjson)
+		logger.Debug(string(resultjson))
 	}
 }
 
 func PageNotFound(w http.ResponseWriter, req *http.Request) {
+	logger := logging.GetLogger()
+	logger.Trace("PageNotFound")
 	requestHandling(w, errors.New("404 Page Not Found"), http.StatusNotFound)
 }
 
 func Create(w http.ResponseWriter, req *http.Request) {
+
+	logger := logging.GetLogger()
+	logger.Trace("Create")
 
 	var NewUser user
 	err := json.NewDecoder(req.Body).Decode(&NewUser)
@@ -115,6 +128,9 @@ func Create(w http.ResponseWriter, req *http.Request) {
 
 func Login(w http.ResponseWriter, req *http.Request) {
 
+	logger := logging.GetLogger()
+	logger.Trace("Login")
+
 	var NewUser user
 	err := json.NewDecoder(req.Body).Decode(&NewUser)
 	if err != nil {
@@ -147,11 +163,16 @@ func Login(w http.ResponseWriter, req *http.Request) {
 
 func FindUser(w http.ResponseWriter, req *http.Request) {
 
+	logger := logging.GetLogger()
+	logger.Trace("FindUser")
+
 	parUserUrl := req.URL.Query()["User"]
 	if len(parUserUrl) == 0 {
 		requestHandling(w, errors.New("User parametrs is missing"), http.StatusBadRequest)
 		return
 	}
+
+	logger.Debugf(" FindUser User %s", parUserUrl[0])
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
@@ -174,6 +195,9 @@ func FindUser(w http.ResponseWriter, req *http.Request) {
 }
 
 func AddContact(w http.ResponseWriter, req *http.Request) {
+
+	logger := logging.GetLogger()
+	logger.Trace("AddContact")
 
 	var NewUser contact
 	err := json.NewDecoder(req.Body).Decode(&NewUser)
@@ -204,6 +228,9 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 
 func CreateMessage(w http.ResponseWriter, req *http.Request) {
 
+	logger := logging.GetLogger()
+	logger.Trace("CreateMessage")
+
 	var NewMes message
 	err := json.NewDecoder(req.Body).Decode(&NewMes)
 	if err != nil {
@@ -233,6 +260,9 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 
 func ListMessages(w http.ResponseWriter, req *http.Request) {
 
+	logger := logging.GetLogger()
+	logger.Trace("ListMessages")
+
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
 	if err != nil {
@@ -257,6 +287,8 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 		requestHandling(w, errors.New("Recipient parametrs is missing"), http.StatusBadRequest)
 		return
 	}
+
+	logger.Debugf("ListMessages Recipient %s offset %v", parRecipientUrl[0], offset)
 
 	repo := storage.New(client.Database("ChatGo"))
 	useCase := message_usecase.New(repo)

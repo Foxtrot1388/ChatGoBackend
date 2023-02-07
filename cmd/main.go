@@ -1,13 +1,14 @@
 package main
 
 import (
+	"ChatGo/pkg/logging"
 	app "ChatGo/server"
-	"log"
 )
 
 func main() {
 	err := app.Run()
 	if err != nil {
-		log.Fatal(err)
+		logger := logging.GetLogger()
+		logger.Fatal(err)
 	}
 }
