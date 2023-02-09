@@ -12,4 +12,6 @@ DB: mongodb (go.mongodb.org/mongo-driver/mongo)
 
 Log: https://github.com/sirupsen/logrus
 
+API versioning: https://github.com/kataras/versioning
+
 Clean architecture
