@@ -1,0 +1,7 @@
+mongo:
+  host: "localhost"
+  port: "27017"
+  user: "root"
+  pass: "example"
+signingkey: "example"
+salt: "example"
