@@ -8,12 +8,13 @@ import (
 	message_usecase "ChatGo/internal/usecase/message"
 	user_usecase "ChatGo/internal/usecase/user"
 	"ChatGo/pkg/logging"
-	auth "ChatGo/server/midleware"
+	"ChatGo/server/midleware"
 	"context"
 	"encoding/json"
 	"errors"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gorilla/mux"
+	"github.com/kataras/versioning"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
@@ -42,20 +43,11 @@ type answer struct {
 func Run() error {
 
 	logger := logging.GetLogger()
-
 	logger.Info("Start app")
+
 	validation.ErrorTag = "vall"
 
-	r := mux.NewRouter()
-	r.HandleFunc("/CreateUser", Create).Methods("POST", "PUT")
-	r.HandleFunc("/LoginUser", Login).Methods("POST", "PUT")
-	r.HandleFunc("/FindUser", FindUser).Methods("GET")
-	r.HandleFunc("/AddContact", AddContact).Methods("POST", "PUT")
-	r.HandleFunc("/CreateMessage", CreateMessage).Methods("POST", "PUT")
-	r.HandleFunc("/ListMessages", ListMessages).Methods("GET")
-	r.NotFoundHandler = http.HandlerFunc(PageNotFound)
-
-	r.Use(auth.AuthMiddleware)
+	r := createRouter()
 
 	err := http.ListenAndServe(":8090", r)
 	if err != nil {
@@ -63,6 +55,49 @@ func Run() error {
 	}
 
 	return nil
+}
+
+func createRouter() *mux.Router {
+
+	logger := logging.GetLogger()
+	logger.Trace("createRouter")
+
+	r := mux.NewRouter()
+	r.NotFoundHandler = http.HandlerFunc(PageNotFound)
+
+	r.Handle("/CreateUser", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(Create),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("POST", "PUT")
+
+	r.Handle("/LoginUser", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(Login),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("POST", "PUT")
+
+	r.Handle("/FindUser", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(FindUser),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("GET")
+
+	r.Handle("/AddContact", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(AddContact),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("POST", "PUT")
+
+	r.Handle("/CreateMessage", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(CreateMessage),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("POST", "PUT")
+
+	r.Handle("/ListMessages", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(ListMessages),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("GET")
+
+	r.Use(midleware.AuthMiddleware)
+
+	return r
 }
 
 func requestHandling(w http.ResponseWriter, result interface{}, code int) {
