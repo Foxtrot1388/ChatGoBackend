@@ -1,7 +1,7 @@
 package midleware
 
 import (
-	"ChatGo/config"
+	"ChatGo/internal/config"
 	"context"
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"

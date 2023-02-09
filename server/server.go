@@ -1,8 +1,8 @@
 package app
 
 import (
-	"ChatGo/config"
 	storage "ChatGo/internal/adapters/db/mongodb"
+	"ChatGo/internal/config"
 	controller "ChatGo/internal/controller/http/v1"
 	"ChatGo/internal/domain/entity"
 	message_usecase "ChatGo/internal/usecase/message"
@@ -139,7 +139,7 @@ func Create(w http.ResponseWriter, req *http.Request) {
 	}
 
 	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
@@ -174,7 +174,7 @@ func Login(w http.ResponseWriter, req *http.Request) {
 	}
 
 	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
@@ -210,7 +210,7 @@ func FindUser(w http.ResponseWriter, req *http.Request) {
 	logger.Debugf(" FindUser User %s", parUserUrl[0])
 
 	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
@@ -242,7 +242,7 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 	}
 
 	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
@@ -274,7 +274,7 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
@@ -299,7 +299,7 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 	logger.Trace("ListMessages")
 
 	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.URI))
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
