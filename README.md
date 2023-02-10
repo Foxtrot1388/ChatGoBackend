@@ -1,4 +1,4 @@
-## Chat test project for my golange learning
+## Chat test project for my golang learning
 
 This repository contains only backend
 
