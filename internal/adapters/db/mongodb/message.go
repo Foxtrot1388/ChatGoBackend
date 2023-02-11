@@ -22,10 +22,14 @@ func (bs *Storage) CreateMessage(mes *entity.Message) (string, error) {
 
 func (bs *Storage) DeleteMessage(mesid string) error {
 
-	parUser := bson.M{"_id": primitive.ObjectIDFromHex(mesid)}
+	res, err := primitive.ObjectIDFromHex(mesid)
+	if err != nil {
+		return err
+	}
 
+	parUser := bson.M{"_id": res}
 	coll := bs.db.Collection("Messages")
-	_, err := coll.DeleteOne(context.TODO(), parUser)
+	_, err = coll.DeleteOne(context.TODO(), parUser)
 	if err != nil {
 		return err
 	}
