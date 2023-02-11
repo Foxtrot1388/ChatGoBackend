@@ -283,13 +283,13 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 	repo := storage.New(client.Database("ChatGo"))
 	useCase := message_usecase.New(repo)
 	con := controller.NewMessageUseCase(useCase)
-	err = con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
+	resultID, err := con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	requestHandling(w, "Ok", http.StatusOK)
+	requestHandling(w, resultID, http.StatusOK)
 
 }
 
