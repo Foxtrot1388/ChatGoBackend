@@ -18,10 +18,23 @@ func New(db *mongo.Database) *Storage {
 
 func (bs *Storage) Create(user *entity.User) error {
 
-	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
+	parUser := bson.M{"_id": user.Login}
 
 	coll := bs.db.Collection("Users")
 	_, err := coll.InsertOne(context.TODO(), parUser)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bs *Storage) Delete(user *entity.User) error {
+
+	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
+
+	coll := bs.db.Collection("Users")
+	_, err := coll.DeleteOne(context.TODO(), parUser)
 	if err != nil {
 		return err
 	}

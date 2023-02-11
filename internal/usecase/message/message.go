@@ -6,7 +6,7 @@ import (
 )
 
 type Repository interface {
-	CreateMessage(mes *entity.Message) error
+	CreateMessage(mes *entity.Message) (string, error)
 	FindOne(user string) (*entity.FindUser, error)
 	ListMessages(sender *entity.FindUser, recipient *entity.FindUser, afterAt interface{}) (*entity.ListMessage, error)
 }
@@ -25,11 +25,11 @@ func (r *UseCase) ListMessages(recipient string, sender string, afterAt interfac
 	return r.repo.ListMessages(&entity.FindUser{Login: sender}, &entity.FindUser{Login: recipient}, afterAt)
 }
 
-func (r *UseCase) CreateMessage(body string, recipient string, sender string) error {
+func (r *UseCase) CreateMessage(body string, recipient string, sender string) (string, error) {
 
 	adduser, err := r.repo.FindOne(recipient)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	Message := entity.Message{
@@ -41,7 +41,7 @@ func (r *UseCase) CreateMessage(body string, recipient string, sender string) er
 
 	err = Message.Validate()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	return r.repo.CreateMessage(&Message)
