@@ -5,6 +5,7 @@ import (
 	"ChatGo/internal/config"
 	controller "ChatGo/internal/controller/http/v1"
 	"ChatGo/internal/domain/entity"
+	contact_usecase "ChatGo/internal/usecase/contact"
 	message_usecase "ChatGo/internal/usecase/message"
 	user_usecase "ChatGo/internal/usecase/user"
 	"ChatGo/pkg/logging"
@@ -93,6 +94,11 @@ func createRouter() *mux.Router {
 		"1":                 http.HandlerFunc(DeleteContact),
 		versioning.NotFound: http.HandlerFunc(PageNotFound),
 	}))).Methods("POST", "PUT")
+
+	r.Handle("/ListContact", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(ListContact),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("GET")
 
 	r.Handle("/CreateMessage", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
 		"1":                 http.HandlerFunc(CreateMessage),
@@ -258,8 +264,8 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 	}
 
 	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
-	con := controller.NewUserUseCase(useCase)
+	useCase := contact_usecase.New(repo)
+	con := controller.NewContactUseCase(useCase)
 	result, err := con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
@@ -290,8 +296,8 @@ func DeleteContact(w http.ResponseWriter, req *http.Request) {
 	}
 
 	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
-	con := controller.NewUserUseCase(useCase)
+	useCase := contact_usecase.New(repo)
+	con := controller.NewContactUseCase(useCase)
 	err = con.DeleteContact(req.Context(), NewUser.Id)
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
@@ -299,6 +305,31 @@ func DeleteContact(w http.ResponseWriter, req *http.Request) {
 	}
 
 	requestHandling(w, "Ok", http.StatusOK)
+}
+
+func ListContact(w http.ResponseWriter, req *http.Request) {
+
+	logger := logging.GetLogger()
+	logger.Trace("ListContact")
+
+	cfg := config.Get()
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	if err != nil {
+		requestHandling(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	repo := storage.New(client.Database("ChatGo"))
+	useCase := contact_usecase.New(repo)
+	con := controller.NewContactUseCase(useCase)
+	results, err := con.ListContact(req.Context())
+	if err != nil {
+		requestHandling(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requestHandling(w, results, http.StatusOK)
+
 }
 
 func CreateMessage(w http.ResponseWriter, req *http.Request) {
