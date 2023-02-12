@@ -10,8 +10,6 @@ type UseCaseUser interface {
 	Create(user *entity.User) error
 	Login(user *entity.User) (*entity.FindUser, error)
 	Find(user string) (*entity.ListUser, error)
-	AddContact(curuser *entity.FindUser, adduser *entity.FindUser) (string, error)
-	DeleteContact(id string) error
 }
 
 type ControllerUser struct {
@@ -43,17 +41,4 @@ func (c *ControllerUser) Login(ctx context.Context, user *entity.User) (token st
 
 func (c *ControllerUser) Find(ctx context.Context, user string) (*entity.ListUser, error) {
 	return c.userUseCase.Find(user)
-}
-
-func (c *ControllerUser) AddContact(ctx context.Context, adduser *entity.FindUser) (string, error) {
-	return c.userUseCase.AddContact(
-		&entity.FindUser{
-			Login: ctx.Value("User").(string),
-		},
-		adduser,
-	)
-}
-
-func (c *ControllerUser) DeleteContact(ctx context.Context, id string) error {
-	return c.userUseCase.DeleteContact(id)
 }
