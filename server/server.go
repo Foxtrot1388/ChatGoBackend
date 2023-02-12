@@ -35,7 +35,7 @@ type message struct {
 	Recipient string `json:"recipient"`
 }
 
-type answer struct {
+type Answer struct {
 	Error string      `json:"error"`
 	Data  interface{} `json:"data"`
 }
@@ -105,14 +105,14 @@ func requestHandling(w http.ResponseWriter, result interface{}, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	switch result.(type) {
 	case error:
-		errjson, _ := json.Marshal(&answer{
+		errjson, _ := json.Marshal(&Answer{
 			Error: result.(error).Error(),
 			Data:  ""})
 		http.Error(w, string(errjson), code)
 		logger.Errorf("code %d result %s", code, result.(error).Error())
 	default:
 		w.WriteHeader(code)
-		resultjson, _ := json.Marshal(&answer{
+		resultjson, _ := json.Marshal(&Answer{
 			Error: "",
 			Data:  result})
 		w.Write(resultjson)
