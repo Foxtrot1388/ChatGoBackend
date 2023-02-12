@@ -4,6 +4,7 @@ import (
 	"ChatGo/internal/domain/entity"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -95,12 +96,30 @@ func (bs *Storage) FindOne(user string) (*entity.FindUser, error) {
 	return &result, nil
 }
 
-func (bs *Storage) AddContact(curuser *entity.FindUser, adduser *entity.FindUser) error {
+func (bs *Storage) AddContact(curuser *entity.FindUser, adduser *entity.FindUser) (string, error) {
 
 	parUser := bson.M{"user": curuser.Login, "contact": adduser.Login}
 
 	coll := bs.db.Collection("ContactList")
-	_, err := coll.InsertOne(context.TODO(), parUser)
+	result, err := coll.InsertOne(context.TODO(), parUser)
+	if err != nil {
+		return "", err
+	}
+
+	return result.InsertedID.(primitive.ObjectID).Hex(), nil
+
+}
+
+func (bs *Storage) DeleteContact(id string) error {
+
+	bid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	parUser := bson.M{"_id": bid}
+
+	coll := bs.db.Collection("ContactList")
+	_, err = coll.DeleteOne(context.TODO(), parUser)
 	if err != nil {
 		return err
 	}
