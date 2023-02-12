@@ -31,7 +31,7 @@ func (bs *Storage) Create(user *entity.User) error {
 
 func (bs *Storage) Delete(user *entity.User) error {
 
-	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
+	parUser := bson.M{"_id": user.Login}
 
 	coll := bs.db.Collection("Users")
 	_, err := coll.DeleteOne(context.TODO(), parUser)
