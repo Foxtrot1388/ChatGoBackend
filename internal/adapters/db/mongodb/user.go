@@ -19,7 +19,7 @@ func New(db *mongo.Database) *Storage {
 
 func (bs *Storage) Create(user *entity.User) error {
 
-	parUser := bson.M{"_id": user.Login}
+	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
 
 	coll := bs.db.Collection("Users")
 	_, err := coll.InsertOne(context.TODO(), parUser)
