@@ -5,58 +5,35 @@ import (
 )
 
 type Repository interface {
-	Create(user *entity.User) error
-	Login(user *entity.User) (*entity.FindUser, error)
-	Find(user string) (*entity.ListUser, error)
-	FindOne(user string) (*entity.FindUser, error)
-	AddContact(curuser *entity.FindUser, adduser *entity.FindUser) (string, error)
-	DeleteContact(id string) error
+	CreateUser(user *entity.User) error
+	LoginUser(user *entity.User) (*entity.FindUser, error)
+	FindUser(user string) (*entity.ListUser, error)
 }
 
-type UseCase struct {
+type UseCaseUser struct {
 	repo Repository
 }
 
-func New(r Repository) *UseCase {
-	return &UseCase{
+func NewUserUseCase(r Repository) *UseCaseUser {
+	return &UseCaseUser{
 		repo: r,
 	}
 }
 
-func (r *UseCase) Create(user *entity.User) error {
+func (r *UseCaseUser) CreateUser(user *entity.User) error {
 
 	err := user.Validate()
 	if err != nil {
 		return err
 	}
 
-	return r.repo.Create(user)
+	return r.repo.CreateUser(user)
 }
 
-func (r *UseCase) Login(user *entity.User) (*entity.FindUser, error) {
-	return r.repo.Login(user)
+func (r *UseCaseUser) LoginUser(user *entity.User) (*entity.FindUser, error) {
+	return r.repo.LoginUser(user)
 }
 
-func (r *UseCase) Find(user string) (*entity.ListUser, error) {
-	return r.repo.Find(user)
-}
-
-func (r *UseCase) AddContact(curuser *entity.FindUser, user *entity.FindUser) (string, error) {
-
-	err := user.Validate()
-	if err != nil {
-		return "", err
-	}
-
-	adduser, err := r.repo.FindOne(user.Login)
-	if err != nil {
-		return "", err
-	}
-
-	return r.repo.AddContact(curuser, adduser)
-
-}
-
-func (r *UseCase) DeleteContact(id string) error {
-	return r.repo.DeleteContact(id)
+func (r *UseCaseUser) FindUser(user string) (*entity.ListUser, error) {
+	return r.repo.FindUser(user)
 }

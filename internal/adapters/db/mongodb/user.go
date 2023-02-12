@@ -4,7 +4,6 @@ import (
 	"ChatGo/internal/domain/entity"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -17,7 +16,7 @@ func New(db *mongo.Database) *Storage {
 	return &Storage{db: db}
 }
 
-func (bs *Storage) Create(user *entity.User) error {
+func (bs *Storage) CreateUser(user *entity.User) error {
 
 	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
 
@@ -30,7 +29,7 @@ func (bs *Storage) Create(user *entity.User) error {
 	return nil
 }
 
-func (bs *Storage) Delete(user *entity.User) error {
+func (bs *Storage) DeleteUser(user *entity.User) error {
 
 	parUser := bson.M{"_id": user.Login}
 
@@ -43,7 +42,7 @@ func (bs *Storage) Delete(user *entity.User) error {
 	return nil
 }
 
-func (bs *Storage) Login(user *entity.User) (*entity.FindUser, error) {
+func (bs *Storage) LoginUser(user *entity.User) (*entity.FindUser, error) {
 
 	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
 	opts := options.FindOne().SetProjection(bson.D{{"_id", 1}})
@@ -59,7 +58,7 @@ func (bs *Storage) Login(user *entity.User) (*entity.FindUser, error) {
 	return &result, nil
 }
 
-func (bs *Storage) Find(user string) (*entity.ListUser, error) {
+func (bs *Storage) FindUser(user string) (*entity.ListUser, error) {
 
 	parUser := bson.M{"_id": bson.M{"$regex": user, "$options": "im"}}
 	opts := options.Find().SetProjection(bson.D{{"_id", 1}})
@@ -80,7 +79,7 @@ func (bs *Storage) Find(user string) (*entity.ListUser, error) {
 	return &results, nil
 }
 
-func (bs *Storage) FindOne(user string) (*entity.FindUser, error) {
+func (bs *Storage) FindOneUser(user string) (*entity.FindUser, error) {
 
 	parUser := bson.M{"_id": user}
 	opts := options.FindOne().SetProjection(bson.D{{"_id", 1}})
@@ -94,36 +93,4 @@ func (bs *Storage) FindOne(user string) (*entity.FindUser, error) {
 	}
 
 	return &result, nil
-}
-
-func (bs *Storage) AddContact(curuser *entity.FindUser, adduser *entity.FindUser) (string, error) {
-
-	parUser := bson.M{"user": curuser.Login, "contact": adduser.Login}
-
-	coll := bs.db.Collection("ContactList")
-	result, err := coll.InsertOne(context.TODO(), parUser)
-	if err != nil {
-		return "", err
-	}
-
-	return result.InsertedID.(primitive.ObjectID).Hex(), nil
-
-}
-
-func (bs *Storage) DeleteContact(id string) error {
-
-	bid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return err
-	}
-	parUser := bson.M{"_id": bid}
-
-	coll := bs.db.Collection("ContactList")
-	_, err = coll.DeleteOne(context.TODO(), parUser)
-	if err != nil {
-		return err
-	}
-
-	return nil
-
 }

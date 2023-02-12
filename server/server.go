@@ -5,6 +5,7 @@ import (
 	"ChatGo/internal/config"
 	controller "ChatGo/internal/controller/http/v1"
 	"ChatGo/internal/domain/entity"
+	contact_usecase "ChatGo/internal/usecase/contact"
 	message_usecase "ChatGo/internal/usecase/message"
 	user_usecase "ChatGo/internal/usecase/user"
 	"ChatGo/pkg/logging"
@@ -94,6 +95,11 @@ func createRouter() *mux.Router {
 		versioning.NotFound: http.HandlerFunc(PageNotFound),
 	}))).Methods("POST", "PUT")
 
+	r.Handle("/ListContact", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(ListContact),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("GET")
+
 	r.Handle("/CreateMessage", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
 		"1":                 http.HandlerFunc(CreateMessage),
 		versioning.NotFound: http.HandlerFunc(PageNotFound),
@@ -154,10 +160,10 @@ func Create(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
+	repo := storage.New(client.Database(cfg.Mongo.DB))
+	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
-	err = con.Create(req.Context(), &entity.User{
+	err = con.CreateUser(req.Context(), &entity.User{
 		Login: NewUser.Login,
 		Pass:  NewUser.Pass,
 	})
@@ -189,10 +195,10 @@ func Login(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
+	repo := storage.New(client.Database(cfg.Mongo.DB))
+	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
-	token, err := con.Login(req.Context(), &entity.User{
+	token, err := con.LoginUser(req.Context(), &entity.User{
 		Login: NewUser.Login,
 		Pass:  NewUser.Pass,
 	})
@@ -225,10 +231,10 @@ func FindUser(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
+	repo := storage.New(client.Database(cfg.Mongo.DB))
+	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
-	results, err := con.Find(req.Context(), parUserUrl[0])
+	results, err := con.FindUser(req.Context(), parUserUrl[0])
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
 		return
@@ -257,9 +263,9 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
-	con := controller.NewUserUseCase(useCase)
+	repo := storage.New(client.Database(cfg.Mongo.DB))
+	useCase := contact_usecase.New(repo)
+	con := controller.NewContactUseCase(useCase)
 	result, err := con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
@@ -289,9 +295,9 @@ func DeleteContact(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repo := storage.New(client.Database("ChatGo"))
-	useCase := user_usecase.New(repo)
-	con := controller.NewUserUseCase(useCase)
+	repo := storage.New(client.Database(cfg.Mongo.DB))
+	useCase := contact_usecase.New(repo)
+	con := controller.NewContactUseCase(useCase)
 	err = con.DeleteContact(req.Context(), NewUser.Id)
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
@@ -299,6 +305,31 @@ func DeleteContact(w http.ResponseWriter, req *http.Request) {
 	}
 
 	requestHandling(w, "Ok", http.StatusOK)
+}
+
+func ListContact(w http.ResponseWriter, req *http.Request) {
+
+	logger := logging.GetLogger()
+	logger.Trace("ListContact")
+
+	cfg := config.Get()
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	if err != nil {
+		requestHandling(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	repo := storage.New(client.Database(cfg.Mongo.DB))
+	useCase := contact_usecase.New(repo)
+	con := controller.NewContactUseCase(useCase)
+	results, err := con.ListContact(req.Context())
+	if err != nil {
+		requestHandling(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requestHandling(w, results, http.StatusOK)
+
 }
 
 func CreateMessage(w http.ResponseWriter, req *http.Request) {
@@ -320,7 +351,7 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repo := storage.New(client.Database("ChatGo"))
+	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := message_usecase.New(repo)
 	con := controller.NewMessageUseCase(useCase)
 	resultID, err := con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
@@ -365,7 +396,7 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 
 	logger.Debugf("ListMessages Recipient %s offset %v", parRecipientUrl[0], offset)
 
-	repo := storage.New(client.Database("ChatGo"))
+	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := message_usecase.New(repo)
 	con := controller.NewMessageUseCase(useCase)
 	results, err := con.ListMessages(req.Context(), parRecipientUrl[0], offset)
