@@ -4,17 +4,8 @@ import (
 	"ChatGo/internal/domain/entity"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-type Storage struct {
-	db *mongo.Database
-}
-
-func New(db *mongo.Database) *Storage {
-	return &Storage{db: db}
-}
 
 func (bs *Storage) CreateUser(user *entity.User) error {
 

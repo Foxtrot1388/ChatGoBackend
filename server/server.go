@@ -2,7 +2,6 @@ package app
 
 import (
 	storage "ChatGo/internal/adapters/db/mongodb"
-	"ChatGo/internal/config"
 	controller "ChatGo/internal/controller/http/v1"
 	"ChatGo/internal/domain/entity"
 	contact_usecase "ChatGo/internal/usecase/contact"
@@ -16,8 +15,6 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/gorilla/mux"
 	"github.com/kataras/versioning"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 	"time"
 )
@@ -153,14 +150,12 @@ func Create(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
 	err = con.CreateUser(req.Context(), &entity.User{
@@ -188,14 +183,12 @@ func Login(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
 	token, err := con.LoginUser(req.Context(), &entity.User{
@@ -224,14 +217,12 @@ func FindUser(w http.ResponseWriter, req *http.Request) {
 
 	logger.Debugf(" FindUser User %s", parUserUrl[0])
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
 	results, err := con.FindUser(req.Context(), parUserUrl[0])
@@ -256,14 +247,12 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := contact_usecase.New(repo)
 	con := controller.NewContactUseCase(useCase)
 	result, err := con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
@@ -288,14 +277,12 @@ func DeleteContact(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := contact_usecase.New(repo)
 	con := controller.NewContactUseCase(useCase)
 	err = con.DeleteContact(req.Context(), NewUser.Id)
@@ -312,14 +299,12 @@ func ListContact(w http.ResponseWriter, req *http.Request) {
 	logger := logging.GetLogger()
 	logger.Trace("ListContact")
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := contact_usecase.New(repo)
 	con := controller.NewContactUseCase(useCase)
 	results, err := con.ListContact(req.Context())
@@ -344,14 +329,12 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		requestHandling(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 	useCase := message_usecase.New(repo)
 	con := controller.NewMessageUseCase(useCase)
 	resultID, err := con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
@@ -369,15 +352,9 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 	logger := logging.GetLogger()
 	logger.Trace("ListMessages")
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
-	if err != nil {
-		requestHandling(w, err, http.StatusInternalServerError)
-		return
-	}
-
 	parOffsetUrl := req.URL.Query()["afterAt"]
 	var offset interface{}
+	var err error
 	if len(parOffsetUrl) != 0 {
 		offset, err = time.Parse(time.RFC3339, parOffsetUrl[0])
 		if err != nil {
@@ -396,7 +373,12 @@ func ListMessages(w http.ResponseWriter, req *http.Request) {
 
 	logger.Debugf("ListMessages Recipient %s offset %v", parRecipientUrl[0], offset)
 
-	repo := storage.New(client.Database(cfg.Mongo.DB))
+	repo, err := storage.New(context.TODO())
+	if err != nil {
+		requestHandling(w, err, http.StatusInternalServerError)
+		return
+	}
+
 	useCase := message_usecase.New(repo)
 	con := controller.NewMessageUseCase(useCase)
 	results, err := con.ListMessages(req.Context(), parRecipientUrl[0], offset)
