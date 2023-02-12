@@ -16,9 +16,9 @@ func New(db *mongo.Database) *Storage {
 	return &Storage{db: db}
 }
 
-func (bs *Storage) Create(user *entity.User) error {
+func (bs *Storage) CreateUser(user *entity.User) error {
 
-	parUser := bson.M{"_id": user.Login}
+	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
 
 	coll := bs.db.Collection("Users")
 	_, err := coll.InsertOne(context.TODO(), parUser)
@@ -29,7 +29,7 @@ func (bs *Storage) Create(user *entity.User) error {
 	return nil
 }
 
-func (bs *Storage) Delete(user *entity.User) error {
+func (bs *Storage) DeleteUser(user *entity.User) error {
 
 	parUser := bson.M{"_id": user.Login}
 
@@ -42,7 +42,7 @@ func (bs *Storage) Delete(user *entity.User) error {
 	return nil
 }
 
-func (bs *Storage) Login(user *entity.User) (*entity.FindUser, error) {
+func (bs *Storage) LoginUser(user *entity.User) (*entity.FindUser, error) {
 
 	parUser := bson.M{"_id": user.Login, "pass": user.GetHash()}
 	opts := options.FindOne().SetProjection(bson.D{{"_id", 1}})
@@ -58,7 +58,7 @@ func (bs *Storage) Login(user *entity.User) (*entity.FindUser, error) {
 	return &result, nil
 }
 
-func (bs *Storage) Find(user string) (*entity.ListUser, error) {
+func (bs *Storage) FindUser(user string) (*entity.ListUser, error) {
 
 	parUser := bson.M{"_id": bson.M{"$regex": user, "$options": "im"}}
 	opts := options.Find().SetProjection(bson.D{{"_id", 1}})
@@ -79,7 +79,7 @@ func (bs *Storage) Find(user string) (*entity.ListUser, error) {
 	return &results, nil
 }
 
-func (bs *Storage) FindOne(user string) (*entity.FindUser, error) {
+func (bs *Storage) FindOneUser(user string) (*entity.FindUser, error) {
 
 	parUser := bson.M{"_id": user}
 	opts := options.FindOne().SetProjection(bson.D{{"_id", 1}})
