@@ -9,7 +9,8 @@ type Repository interface {
 	Login(user *entity.User) (*entity.FindUser, error)
 	Find(user string) (*entity.ListUser, error)
 	FindOne(user string) (*entity.FindUser, error)
-	AddContact(curuser *entity.FindUser, adduser *entity.FindUser) error
+	AddContact(curuser *entity.FindUser, adduser *entity.FindUser) (string, error)
+	DeleteContact(id string) error
 }
 
 type UseCase struct {
@@ -40,18 +41,22 @@ func (r *UseCase) Find(user string) (*entity.ListUser, error) {
 	return r.repo.Find(user)
 }
 
-func (r *UseCase) AddContact(curuser *entity.FindUser, user *entity.FindUser) error {
+func (r *UseCase) AddContact(curuser *entity.FindUser, user *entity.FindUser) (string, error) {
 
 	err := user.Validate()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	adduser, err := r.repo.FindOne(user.Login)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	return r.repo.AddContact(curuser, adduser)
 
+}
+
+func (r *UseCase) DeleteContact(id string) error {
+	return r.repo.DeleteContact(id)
 }

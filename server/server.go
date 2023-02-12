@@ -30,6 +30,10 @@ type contact struct {
 	Login string `json:"login"`
 }
 
+type DeleteRequest struct {
+	Id string `json:"id"`
+}
+
 type message struct {
 	Body      string `json:"body"`
 	Recipient string `json:"recipient"`
@@ -82,6 +86,11 @@ func createRouter() *mux.Router {
 
 	r.Handle("/AddContact", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
 		"1":                 http.HandlerFunc(AddContact),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("POST", "PUT")
+
+	r.Handle("/DeleteContact", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(DeleteContact),
 		versioning.NotFound: http.HandlerFunc(PageNotFound),
 	}))).Methods("POST", "PUT")
 
@@ -251,14 +260,45 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 	repo := storage.New(client.Database("ChatGo"))
 	useCase := user_usecase.New(repo)
 	con := controller.NewUserUseCase(useCase)
-	err = con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
+	result, err := con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
+	if err != nil {
+		requestHandling(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requestHandling(w, result, http.StatusOK)
+
+}
+
+func DeleteContact(w http.ResponseWriter, req *http.Request) {
+
+	logger := logging.GetLogger()
+	logger.Trace("DeleteContact")
+
+	var NewUser DeleteRequest
+	err := json.NewDecoder(req.Body).Decode(&NewUser)
+	if err != nil {
+		requestHandling(w, err, http.StatusBadRequest)
+		return
+	}
+
+	cfg := config.Get()
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	if err != nil {
+		requestHandling(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	repo := storage.New(client.Database("ChatGo"))
+	useCase := user_usecase.New(repo)
+	con := controller.NewUserUseCase(useCase)
+	err = con.DeleteContact(req.Context(), NewUser.Id)
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
 	requestHandling(w, "Ok", http.StatusOK)
-
 }
 
 func CreateMessage(w http.ResponseWriter, req *http.Request) {
