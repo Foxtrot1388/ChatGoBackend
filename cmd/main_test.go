@@ -2,7 +2,6 @@ package main
 
 import (
 	storage "ChatGo/internal/adapters/db/mongodb"
-	"ChatGo/internal/config"
 	"ChatGo/internal/domain/entity"
 	app "ChatGo/server"
 	"context"
@@ -11,7 +10,6 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,13 +24,11 @@ func TestAll(t *testing.T) {
 	var token string
 	var addid string
 
-	cfg := config.Get()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	repo, err := storage.New(context.TODO())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	repo := storage.New(client.Database(cfg.Mongo.DB))
 
 	t.Cleanup(func() {
 		err := repo.DeleteUser(&entity.User{Login: testlogin})
