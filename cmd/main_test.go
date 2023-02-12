@@ -35,7 +35,7 @@ func TestAll(t *testing.T) {
 	repo := storage.New(client.Database(cfg.Mongo.DB))
 
 	t.Cleanup(func() {
-		err := repo.Delete(&entity.User{Login: testlogin})
+		err := repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
 			t.Error(err)
 			return
