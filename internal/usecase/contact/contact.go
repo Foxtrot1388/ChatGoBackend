@@ -6,7 +6,7 @@ type Repository interface {
 	AddContact(curuser *entity.FindUser, adduser *entity.FindUser) (string, error)
 	DeleteContact(id string) error
 	ListContact(login string) (*entity.ListContact, error)
-	FindOne(user string) (*entity.FindUser, error)
+	FindOneUser(user string) (*entity.FindUser, error)
 }
 
 type UseCase struct {
@@ -30,7 +30,7 @@ func (r *UseCase) AddContact(curuser *entity.FindUser, user *entity.FindUser) (s
 		return "", err
 	}
 
-	adduser, err := r.repo.FindOne(user.Login)
+	adduser, err := r.repo.FindOneUser(user.Login)
 	if err != nil {
 		return "", err
 	}

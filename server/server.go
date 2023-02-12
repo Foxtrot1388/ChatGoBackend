@@ -161,9 +161,9 @@ func Create(w http.ResponseWriter, req *http.Request) {
 	}
 
 	repo := storage.New(client.Database(cfg.Mongo.DB))
-	useCase := user_usecase.New(repo)
+	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
-	err = con.Create(req.Context(), &entity.User{
+	err = con.CreateUser(req.Context(), &entity.User{
 		Login: NewUser.Login,
 		Pass:  NewUser.Pass,
 	})
@@ -196,9 +196,9 @@ func Login(w http.ResponseWriter, req *http.Request) {
 	}
 
 	repo := storage.New(client.Database(cfg.Mongo.DB))
-	useCase := user_usecase.New(repo)
+	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
-	token, err := con.Login(req.Context(), &entity.User{
+	token, err := con.LoginUser(req.Context(), &entity.User{
 		Login: NewUser.Login,
 		Pass:  NewUser.Pass,
 	})
@@ -232,9 +232,9 @@ func FindUser(w http.ResponseWriter, req *http.Request) {
 	}
 
 	repo := storage.New(client.Database(cfg.Mongo.DB))
-	useCase := user_usecase.New(repo)
+	useCase := user_usecase.NewUserUseCase(repo)
 	con := controller.NewUserUseCase(useCase)
-	results, err := con.Find(req.Context(), parUserUrl[0])
+	results, err := con.FindUser(req.Context(), parUserUrl[0])
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
 		return
