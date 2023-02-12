@@ -13,6 +13,7 @@ type Config struct {
 		Port string `yaml:"port"`
 		User string `yaml:"user"`
 		Pass string `yaml:"pass"`
+		DB   string `yaml:"db"`
 		URI  string
 	} `yaml:"mongo"`
 	SigningKey string `yaml:"signingkey"`
