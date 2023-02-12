@@ -6,7 +6,7 @@ import (
 )
 
 type UseCaseMessage interface {
-	CreateMessage(body string, recipient string, sender string) error
+	CreateMessage(body string, recipient string, sender string) (string, error)
 	ListMessages(recipient string, sender string, afterAt interface{}) (*entity.ListMessage, error)
 }
 
@@ -18,7 +18,7 @@ func NewMessageUseCase(messageUseCase UseCaseMessage) *ControllerMessage {
 	return &ControllerMessage{messageUseCase: messageUseCase}
 }
 
-func (c *ControllerMessage) CreateMessage(ctx context.Context, body string, recipient string) error {
+func (c *ControllerMessage) CreateMessage(ctx context.Context, body string, recipient string) (string, error) {
 	return c.messageUseCase.CreateMessage(body, recipient, ctx.Value("User").(string))
 }
 

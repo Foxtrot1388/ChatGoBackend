@@ -30,12 +30,16 @@ type contact struct {
 	Login string `json:"login"`
 }
 
+type DeleteRequest struct {
+	Id string `json:"id"`
+}
+
 type message struct {
 	Body      string `json:"body"`
 	Recipient string `json:"recipient"`
 }
 
-type answer struct {
+type Answer struct {
 	Error string      `json:"error"`
 	Data  interface{} `json:"data"`
 }
@@ -85,6 +89,11 @@ func createRouter() *mux.Router {
 		versioning.NotFound: http.HandlerFunc(PageNotFound),
 	}))).Methods("POST", "PUT")
 
+	r.Handle("/DeleteContact", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
+		"1":                 http.HandlerFunc(DeleteContact),
+		versioning.NotFound: http.HandlerFunc(PageNotFound),
+	}))).Methods("POST", "PUT")
+
 	r.Handle("/CreateMessage", midleware.VersionMiddleware(versioning.NewMatcher(versioning.Map{
 		"1":                 http.HandlerFunc(CreateMessage),
 		versioning.NotFound: http.HandlerFunc(PageNotFound),
@@ -105,14 +114,14 @@ func requestHandling(w http.ResponseWriter, result interface{}, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	switch result.(type) {
 	case error:
-		errjson, _ := json.Marshal(&answer{
+		errjson, _ := json.Marshal(&Answer{
 			Error: result.(error).Error(),
 			Data:  ""})
 		http.Error(w, string(errjson), code)
 		logger.Errorf("code %d result %s", code, result.(error).Error())
 	default:
 		w.WriteHeader(code)
-		resultjson, _ := json.Marshal(&answer{
+		resultjson, _ := json.Marshal(&Answer{
 			Error: "",
 			Data:  result})
 		w.Write(resultjson)
@@ -251,14 +260,45 @@ func AddContact(w http.ResponseWriter, req *http.Request) {
 	repo := storage.New(client.Database("ChatGo"))
 	useCase := user_usecase.New(repo)
 	con := controller.NewUserUseCase(useCase)
-	err = con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
+	result, err := con.AddContact(req.Context(), &entity.FindUser{Login: NewUser.Login})
+	if err != nil {
+		requestHandling(w, err, http.StatusBadRequest)
+		return
+	}
+
+	requestHandling(w, result, http.StatusOK)
+
+}
+
+func DeleteContact(w http.ResponseWriter, req *http.Request) {
+
+	logger := logging.GetLogger()
+	logger.Trace("DeleteContact")
+
+	var NewUser DeleteRequest
+	err := json.NewDecoder(req.Body).Decode(&NewUser)
+	if err != nil {
+		requestHandling(w, err, http.StatusBadRequest)
+		return
+	}
+
+	cfg := config.Get()
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
+	if err != nil {
+		requestHandling(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	repo := storage.New(client.Database("ChatGo"))
+	useCase := user_usecase.New(repo)
+	con := controller.NewUserUseCase(useCase)
+	err = con.DeleteContact(req.Context(), NewUser.Id)
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
 	requestHandling(w, "Ok", http.StatusOK)
-
 }
 
 func CreateMessage(w http.ResponseWriter, req *http.Request) {
@@ -283,13 +323,13 @@ func CreateMessage(w http.ResponseWriter, req *http.Request) {
 	repo := storage.New(client.Database("ChatGo"))
 	useCase := message_usecase.New(repo)
 	con := controller.NewMessageUseCase(useCase)
-	err = con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
+	resultID, err := con.CreateMessage(req.Context(), NewMes.Body, NewMes.Recipient)
 	if err != nil {
 		requestHandling(w, err, http.StatusBadRequest)
 		return
 	}
 
-	requestHandling(w, "Ok", http.StatusOK)
+	requestHandling(w, resultID, http.StatusOK)
 
 }
 

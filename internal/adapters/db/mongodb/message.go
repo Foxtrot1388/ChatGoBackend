@@ -4,15 +4,32 @@ import (
 	"ChatGo/internal/domain/entity"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (bs *Storage) CreateMessage(mes *entity.Message) error {
+func (bs *Storage) CreateMessage(mes *entity.Message) (string, error) {
 
 	parUser := bson.M{"body": mes.Body, "Sender": mes.Sender.Login, "Recipient": mes.Recipient.Login, "Date": mes.Date}
 
 	coll := bs.db.Collection("Messages")
-	_, err := coll.InsertOne(context.TODO(), parUser)
+	result, err := coll.InsertOne(context.TODO(), parUser)
+	if err != nil {
+		return "", err
+	}
+	return result.InsertedID.(primitive.ObjectID).Hex(), nil
+}
+
+func (bs *Storage) DeleteMessage(mesid string) error {
+
+	res, err := primitive.ObjectIDFromHex(mesid)
+	if err != nil {
+		return err
+	}
+
+	parUser := bson.M{"_id": res}
+	coll := bs.db.Collection("Messages")
+	_, err = coll.DeleteOne(context.TODO(), parUser)
 	if err != nil {
 		return err
 	}
