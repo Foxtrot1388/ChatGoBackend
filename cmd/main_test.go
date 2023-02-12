@@ -24,6 +24,7 @@ func TestAll(t *testing.T) {
 	testlogin := "TestUser"
 	pass := "12345678"
 	var token string
+	var addid string
 
 	cfg := config.Get()
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(cfg.Mongo.URI))
@@ -31,10 +32,15 @@ func TestAll(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	repo := storage.New(client.Database("ChatGo"))
+	repo := storage.New(client.Database(cfg.Mongo.DB))
 
 	t.Cleanup(func() {
 		err := repo.Delete(&entity.User{Login: testlogin})
+		if err != nil && err != mongo.ErrNoDocuments {
+			t.Error(err)
+			return
+		}
+		err = repo.DeleteContact(addid)
 		if err != nil && err != mongo.ErrNoDocuments {
 			t.Error(err)
 			return
@@ -162,6 +168,8 @@ func TestAll(t *testing.T) {
 			t.Error(err)
 			return
 		}
+
+		addid = NewAddAnswer.Data.(string)
 
 		assert.Equal(t, addanswer, NewAddAnswer)
 
