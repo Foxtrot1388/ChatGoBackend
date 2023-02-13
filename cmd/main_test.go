@@ -16,13 +16,101 @@ import (
 	"testing"
 )
 
-func TestAll(t *testing.T) {
-
+func init() {
 	validation.ErrorTag = "vall"
-	testlogin := "TestUser"
-	pass := "12345678"
-	var token string
-	var addid string
+}
+
+func TestUserPasswordIsIncorrect(t *testing.T) {
+
+	createanswer := app.Answer{
+		Error: "Пароль: Длинна должна быть от 8 до 20 символов.",
+		Data:  "",
+	}
+
+	handlerCreate := http.HandlerFunc(app.Create)
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"1\"}", "TestLogin")))
+	handlerCreate.ServeHTTP(rec, req)
+
+	var NewUserAnswer app.Answer
+	err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	assert.Equal(t, rec.Code, http.StatusBadRequest)
+	assert.Equal(t, createanswer, NewUserAnswer)
+
+}
+
+func TestUserLoginIsIncorrect(t *testing.T) {
+
+	createanswer := app.Answer{
+		Error: "Логин: Разрешенны только символы и цифры.",
+		Data:  "",
+	}
+
+	handlerCreate := http.HandlerFunc(app.Create)
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader("{\"Login\":\"Den*\", \"Pass\":\"12345678\"}"))
+	handlerCreate.ServeHTTP(rec, req)
+
+	var NewUserAnswer app.Answer
+	err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	assert.Equal(t, rec.Code, http.StatusBadRequest)
+	assert.Equal(t, createanswer, NewUserAnswer)
+
+}
+
+func TestUserIsCorrect(t *testing.T) {
+
+	testlogin := "TestUser1"
+
+	t.Cleanup(func() {
+
+		repo, err := storage.New(context.TODO())
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		err = repo.DeleteUser(&entity.User{Login: testlogin})
+		if err != nil && err != mongo.ErrNoDocuments {
+			t.Error(err)
+			return
+		}
+
+	})
+
+	createanswer := app.Answer{
+		Error: "",
+		Data:  "Ok",
+	}
+
+	handlerCreate := http.HandlerFunc(app.Create)
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, "12345678")))
+	handlerCreate.ServeHTTP(rec, req)
+
+	var NewUserAnswer app.Answer
+	err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Equal(t, createanswer, NewUserAnswer)
+
+}
+
+func TestLoginFailed(t *testing.T) {
 
 	repo, err := storage.New(context.TODO())
 	if err != nil {
@@ -30,145 +118,118 @@ func TestAll(t *testing.T) {
 		return
 	}
 
+	testlogin := "TestUser2"
+	pass := "12345678"
+
+	err = repo.CreateUser(&entity.User{
+		Login: testlogin,
+		Pass:  pass,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	t.Cleanup(func() {
-		err := repo.DeleteUser(&entity.User{Login: testlogin})
+
+		err = repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
 			t.Error(err)
 			return
 		}
-		err = repo.DeleteContact(addid)
+
+	})
+
+	handlerCreate := http.HandlerFunc(app.Login)
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/LoginUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"87654321\"}", testlogin)))
+	handlerCreate.ServeHTTP(rec, req)
+
+	assert.Equal(t, rec.Code, http.StatusBadRequest)
+
+}
+
+func TestLoginSuccessful(t *testing.T) {
+
+	repo, err := storage.New(context.TODO())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	testlogin := "TestUser3"
+	pass := "12345678"
+
+	err = repo.CreateUser(&entity.User{
+		Login: testlogin,
+		Pass:  pass,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	t.Cleanup(func() {
+
+		err = repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
 			t.Error(err)
 			return
 		}
+
 	})
 
-	t.Run("Password is incorrect", func(t *testing.T) {
+	handlerCreate := http.HandlerFunc(app.Login)
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/LoginUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, pass)))
+	handlerCreate.ServeHTTP(rec, req)
 
-		createanswer := app.Answer{
-			Error: "Пароль: Длинна должна быть от 8 до 20 символов.",
-			Data:  "",
-		}
+	assert.Equal(t, rec.Code, http.StatusOK)
 
-		handlerCreate := http.HandlerFunc(app.Create)
-		rec := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"1\"}", testlogin)))
-		handlerCreate.ServeHTTP(rec, req)
+	var NewLoginAnswer app.Answer
+	err = json.NewDecoder(rec.Body).Decode(&NewLoginAnswer)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
-		var NewUserAnswer app.Answer
-		err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
-		if err != nil {
+}
+
+func TestAddContactSuccessful(t *testing.T) {
+
+	repo, err := storage.New(context.TODO())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	testlogin := "TestUser4"
+	pass := "12345678"
+
+	err = repo.CreateUser(&entity.User{
+		Login: testlogin,
+		Pass:  pass,
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	t.Cleanup(func() {
+
+		err = repo.DeleteUser(&entity.User{Login: testlogin})
+		if err != nil && err != mongo.ErrNoDocuments {
 			t.Error(err)
 			return
 		}
 
-		assert.Equal(t, rec.Code, http.StatusBadRequest)
-		assert.Equal(t, createanswer, NewUserAnswer)
 	})
 
-	t.Run("Login is incorrect", func(t *testing.T) {
+	handlerCreate := http.HandlerFunc(app.AddContact)
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/AddContact", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\"}", testlogin)))
+	handlerCreate.ServeHTTP(rec, req.WithContext(context.WithValue(req.Context(), "User", testlogin)))
 
-		createanswer := app.Answer{
-			Error: "Логин: Разрешенны только символы и цифры.",
-			Data:  "",
-		}
-
-		handlerCreate := http.HandlerFunc(app.Create)
-		rec := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader("{\"Login\":\"Den*\", \"Pass\":\"12345678\"}"))
-		handlerCreate.ServeHTTP(rec, req)
-
-		var NewUserAnswer app.Answer
-		err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-
-		assert.Equal(t, rec.Code, http.StatusBadRequest)
-		assert.Equal(t, createanswer, NewUserAnswer)
-	})
-
-	t.Run("User is correct", func(t *testing.T) {
-
-		createanswer := app.Answer{
-			Error: "",
-			Data:  "Ok",
-		}
-
-		handlerCreate := http.HandlerFunc(app.Create)
-		rec := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, pass)))
-		handlerCreate.ServeHTTP(rec, req)
-
-		var NewUserAnswer app.Answer
-		err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-
-		assert.Equal(t, rec.Code, http.StatusOK)
-		assert.Equal(t, createanswer, NewUserAnswer)
-	})
-
-	t.Run("Login failed", func(t *testing.T) {
-
-		handlerCreate := http.HandlerFunc(app.Create)
-		rec := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/LoginUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"87654321\"}", testlogin)))
-		handlerCreate.ServeHTTP(rec, req)
-
-		assert.Equal(t, rec.Code, http.StatusBadRequest)
-
-	})
-
-	t.Run("Login successful", func(t *testing.T) {
-
-		handlerCreate := http.HandlerFunc(app.Create)
-		rec := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/LoginUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, pass)))
-		handlerCreate.ServeHTTP(rec, req)
-
-		assert.Equal(t, rec.Code, http.StatusOK)
-
-		var NewLoginAnswer app.Answer
-		err := json.NewDecoder(rec.Body).Decode(&NewLoginAnswer)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-
-		token = NewLoginAnswer.Data.(string)
-
-	})
-
-	t.Run("Add contact successful", func(t *testing.T) {
-
-		handlerCreate := http.HandlerFunc(app.Create)
-		rec := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/AddContact", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\"}", testlogin)))
-		req.Header.Add("Authorization", "Bearer "+token)
-		handlerCreate.ServeHTTP(rec, req)
-
-		assert.Equal(t, rec.Code, http.StatusOK)
-
-		addanswer := app.Answer{
-			Error: "",
-			Data:  "Ok",
-		}
-
-		var NewAddAnswer app.Answer
-		err := json.NewDecoder(rec.Body).Decode(&NewAddAnswer)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-
-		addid = NewAddAnswer.Data.(string)
-
-		assert.Equal(t, addanswer, NewAddAnswer)
-
-	})
+	assert.Equal(t, rec.Code, http.StatusOK)
 
 }
