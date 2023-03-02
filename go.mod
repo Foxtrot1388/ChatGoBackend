@@ -9,6 +9,8 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
+	github.com/PaesslerAG/gval v1.2.2 // indirect
+	github.com/PaesslerAG/jsonpath v0.1.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible // indirect
@@ -24,7 +26,10 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/steinfletcher/apitest v1.5.14 // indirect
+	github.com/steinfletcher/apitest-jsonpath v1.7.1 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
