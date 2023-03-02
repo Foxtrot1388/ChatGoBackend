@@ -5,14 +5,11 @@ import (
 	"ChatGo/internal/domain/entity"
 	app "ChatGo/server"
 	"context"
-	"encoding/json"
-	"fmt"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/steinfletcher/apitest"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 )
 
@@ -22,49 +19,27 @@ func init() {
 
 func TestUserPasswordIsIncorrect(t *testing.T) {
 
-	createanswer := app.Answer{
-		Error: "Пароль: Длинна должна быть от 8 до 20 символов.",
-		Data:  "",
-	}
-
-	handlerCreate := http.HandlerFunc(app.Create)
-	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"1\"}", "TestLogin")))
-	handlerCreate.ServeHTTP(rec, req)
-
-	var NewUserAnswer app.Answer
-	err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	assert.Equal(t, rec.Code, http.StatusBadRequest)
-	assert.Equal(t, createanswer, NewUserAnswer)
+	apitest.
+		HandlerFunc(app.Create).
+		Post("/CreateUser").
+		Bodyf("{\"Login\":\"%s\", \"Pass\":\"1\"}", "TestLogin").
+		Expect(t).
+		Status(http.StatusBadRequest).
+		Body(`{"error": "Пароль: Длинна должна быть от 8 до 20 символов.", "data": ""}`).
+		End()
 
 }
 
 func TestUserLoginIsIncorrect(t *testing.T) {
 
-	createanswer := app.Answer{
-		Error: "Логин: Разрешенны только символы и цифры.",
-		Data:  "",
-	}
-
-	handlerCreate := http.HandlerFunc(app.Create)
-	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader("{\"Login\":\"Den*\", \"Pass\":\"12345678\"}"))
-	handlerCreate.ServeHTTP(rec, req)
-
-	var NewUserAnswer app.Answer
-	err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	assert.Equal(t, rec.Code, http.StatusBadRequest)
-	assert.Equal(t, createanswer, NewUserAnswer)
+	apitest.
+		HandlerFunc(app.Create).
+		Post("/CreateUser").
+		Body("{\"Login\":\"Den*\", \"Pass\":\"12345678\"}").
+		Expect(t).
+		Status(http.StatusBadRequest).
+		Body(`{"error": "Логин: Разрешенны только символы и цифры.", "data": ""}`).
+		End()
 
 }
 
@@ -75,48 +50,30 @@ func TestUserIsCorrect(t *testing.T) {
 	t.Cleanup(func() {
 
 		repo, err := storage.New(context.TODO())
-		if err != nil {
-			t.Error(err)
-			return
-		}
+		assert.Nil(t, err)
 
 		err = repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
-			t.Error(err)
-			return
+			assert.Nil(t, err)
 		}
 
 	})
 
-	createanswer := app.Answer{
-		Error: "",
-		Data:  "Ok",
-	}
-
-	handlerCreate := http.HandlerFunc(app.Create)
-	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/CreateUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, "12345678")))
-	handlerCreate.ServeHTTP(rec, req)
-
-	var NewUserAnswer app.Answer
-	err := json.NewDecoder(rec.Body).Decode(&NewUserAnswer)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Equal(t, createanswer, NewUserAnswer)
+	apitest.
+		HandlerFunc(app.Create).
+		Post("/CreateUser").
+		Bodyf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, "12345678").
+		Expect(t).
+		Status(http.StatusOK).
+		Body(`{"error": "", "data": "Ok"}`).
+		End()
 
 }
 
 func TestLoginFailed(t *testing.T) {
 
 	repo, err := storage.New(context.TODO())
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	assert.Nil(t, err)
 
 	testlogin := "TestUser2"
 	pass := "12345678"
@@ -125,37 +82,31 @@ func TestLoginFailed(t *testing.T) {
 		Login: testlogin,
 		Pass:  pass,
 	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	assert.Nil(t, err)
 
 	t.Cleanup(func() {
 
 		err = repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
-			t.Error(err)
-			return
+			assert.Nil(t, err)
 		}
 
 	})
 
-	handlerCreate := http.HandlerFunc(app.Login)
-	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/LoginUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"87654321\"}", testlogin)))
-	handlerCreate.ServeHTTP(rec, req)
-
-	assert.Equal(t, rec.Code, http.StatusBadRequest)
+	apitest.
+		HandlerFunc(app.Login).
+		Post("/LoginUser").
+		Bodyf("{\"Login\":\"%s\", \"Pass\":\"87654321\"}", testlogin).
+		Expect(t).
+		Status(http.StatusBadRequest).
+		End()
 
 }
 
 func TestLoginSuccessful(t *testing.T) {
 
 	repo, err := storage.New(context.TODO())
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	assert.Nil(t, err)
 
 	testlogin := "TestUser3"
 	pass := "12345678"
@@ -164,34 +115,24 @@ func TestLoginSuccessful(t *testing.T) {
 		Login: testlogin,
 		Pass:  pass,
 	})
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	assert.Nil(t, err)
 
 	t.Cleanup(func() {
 
 		err = repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
-			t.Error(err)
-			return
+			assert.Nil(t, err)
 		}
 
 	})
 
-	handlerCreate := http.HandlerFunc(app.Login)
-	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/LoginUser", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, pass)))
-	handlerCreate.ServeHTTP(rec, req)
-
-	assert.Equal(t, rec.Code, http.StatusOK)
-
-	var NewLoginAnswer app.Answer
-	err = json.NewDecoder(rec.Body).Decode(&NewLoginAnswer)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	apitest.
+		HandlerFunc(app.Login).
+		Post("/LoginUser").
+		Bodyf("{\"Login\":\"%s\", \"Pass\":\"%s\"}", testlogin, pass).
+		Expect(t).
+		Status(http.StatusOK).
+		End()
 
 }
 
@@ -199,8 +140,7 @@ func TestAddContactSuccessful(t *testing.T) {
 
 	repo, err := storage.New(context.TODO())
 	if err != nil {
-		t.Error(err)
-		return
+		assert.Nil(t, err)
 	}
 
 	testlogin := "TestUser4"
@@ -211,25 +151,25 @@ func TestAddContactSuccessful(t *testing.T) {
 		Pass:  pass,
 	})
 	if err != nil {
-		t.Error(err)
-		return
+		assert.Nil(t, err)
 	}
 
 	t.Cleanup(func() {
 
 		err = repo.DeleteUser(&entity.User{Login: testlogin})
 		if err != nil && err != mongo.ErrNoDocuments {
-			t.Error(err)
-			return
+			assert.Nil(t, err)
 		}
 
 	})
 
-	handlerCreate := http.HandlerFunc(app.AddContact)
-	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/AddContact", strings.NewReader(fmt.Sprintf("{\"Login\":\"%s\"}", testlogin)))
-	handlerCreate.ServeHTTP(rec, req.WithContext(context.WithValue(req.Context(), "User", testlogin)))
-
-	assert.Equal(t, rec.Code, http.StatusOK)
+	apitest.
+		HandlerFunc(app.AddContact).
+		Post("/AddContact").
+		WithContext(context.WithValue(context.TODO(), "User", testlogin)).
+		Bodyf("{\"Login\":\"%s\"}", testlogin).
+		Expect(t).
+		Status(http.StatusOK).
+		End()
 
 }
