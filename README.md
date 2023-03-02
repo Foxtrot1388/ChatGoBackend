@@ -16,4 +16,6 @@ Log: https://github.com/sirupsen/logrus
 
 API versioning: https://github.com/kataras/versioning
 
+Test: ApiTest, Testify
+
 Clean architecture
